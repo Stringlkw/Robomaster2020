@@ -1,6 +1,5 @@
 #include"WindMill.h"
 
-
 static bool CircleInfo2(std::vector<cv::Point2f>& pts, cv::Point2f& center, float& radius)
 {
     center = cv::Point2d(0, 0);
@@ -139,176 +138,179 @@ void WindMill::ISP()
 }
 
 
-void WindMill:: detect()
-{
-    vector<Point2f> cirV;
-    Point2f cc = Point2f(0, 0);
-
-    String filepath = "template/template";
-    loadTempImage(filepath);
-
-    //载入视频
-    VideoCapture capture("red.avi");
-    //deoCapture capture(0);
-    if (!capture.isOpened())
+Point2f WindMill:: detect()
     {
-        cout << "fail to open video" << endl;
-        return;
-    }
-    capture >> _roiImg;
-    while (!_roiImg.empty())
-    {
-        capture >> _roiImg;
-        ISP();
+        vector<Point2f> cirV;
+        Point2f cc = Point2f(0, 0);
 
-        //风车扇叶识别
-        //查找轮廓
-        vector<vector<Point>> contours;
-        vector<Vec4i> hierarchy;
-        findContours(binBrightImg, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
-        RotatedRect rect_tmp;
-        bool findTarget = false;
-        //遍历轮廓
-        if (hierarchy.size())
+        String filepath = "template/template";
+        loadTempImage(filepath);
+
+        //载入视频
+        VideoCapture capture("red.avi");
+        //deoCapture capture(0);
+        if (!capture.isOpened())
         {
-            for (int i = 0; i >= 0; i = hierarchy[i][0])
+            cout << "fail to open video" << endl;
+            return Point2f(0, 0);
+        }
+        capture >> _roiImg;
+        while (!_roiImg.empty())
+        {
+            capture >> _roiImg;
+            ISP();
+
+            //风车扇叶识别
+            //查找轮廓
+            vector<vector<Point>> contours;
+            vector<Vec4i> hierarchy;
+            findContours(binBrightImg, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
+            RotatedRect rect_tmp;
+            bool findTarget = false;
+            //遍历轮廓
+            if (hierarchy.size())
             {
-                //找出轮廓的最小外接矩形
-                rect_tmp = minAreaRect(contours[i]);
-                Point2f P[4];
-                rect_tmp.points(P);
-
-                //为透视变换做准备
-                Point2f srcRect[4];
-                Point2f dstRect[4];
-                double width;
-                double height;
-
-                //矫正提取叶片的宽高
-                width = getDistance(P[0], P[1]);
-                height = getDistance(P[1], P[2]);
-                if (width > height)
+                for (int i = 0; i >= 0; i = hierarchy[i][0])
                 {
-                    srcRect[0] = P[0];
-                    srcRect[1] = P[1];
-                    srcRect[2] = P[2];
-                    srcRect[3] = P[3];
-                }
-                else
-                {
-                    swap(width, height);
-                    srcRect[0] = P[1];
-                    srcRect[1] = P[2];
-                    srcRect[2] = P[3];
-                    srcRect[3] = P[0];
-                }
+                    //找出轮廓的最小外接矩形
+                    rect_tmp = minAreaRect(contours[i]);
+                    Point2f P[4];
+                    rect_tmp.points(P);
 
-                //通过面积筛选
-                double area = height * width;
-                if (area > 5000)
-                {
-                    dstRect[0] = Point2f(0, 0);
-                    dstRect[1] = Point2f(width, 0);
-                    dstRect[2] = Point2f(width, height);
-                    dstRect[3] = Point2f(0, height);
-                    // 应用透视变换，矫正成规则矩形
-                    Mat transform = getPerspectiveTransform(srcRect, dstRect);
-                    Mat perspectMat;
-                    warpPerspective(binBrightImg, perspectMat, transform, binBrightImg.size());
-                    // 提取扇叶图片
-                    Mat testim;
-                    testim = perspectMat(Rect(0, 0, width, height));
+                    //为透视变换做准备
+                    Point2f srcRect[4];
+                    Point2f dstRect[4];
+                    double width;
+                    double height;
 
-                    cv::Point matchLoc;
-                    double value;
-                    Mat tmp1;
-                    resize(testim, tmp1, Size(42, 20));
-
-                    vector<double> Vvalue1;
-                    vector<double> Vvalue2;
-                    for (int j = 1; j <= 6; j++)
+                    //矫正提取叶片的宽高
+                    width = getDistance(P[0], P[1]);
+                    height = getDistance(P[1], P[2]);
+                    if (width > height)
                     {
-                        value = TemplateMatch(tmp1, templ[j], matchLoc, TM_CCOEFF_NORMED);
-                        Vvalue1.push_back(value);
+                        srcRect[0] = P[0];
+                        srcRect[1] = P[1];
+                        srcRect[2] = P[2];
+                        srcRect[3] = P[3];
                     }
-                    for (int j = 7; j <= 8; j++)
+                    else
                     {
-                        value = TemplateMatch(tmp1, templ[j], matchLoc, TM_CCOEFF_NORMED);
-                        Vvalue2.push_back(value);
+                        swap(width, height);
+                        srcRect[0] = P[1];
+                        srcRect[1] = P[2];
+                        srcRect[2] = P[3];
+                        srcRect[3] = P[0];
                     }
-                    int maxv1 = 0, maxv2 = 0;
 
-                    for (int t1 = 0; t1 < 6; t1++)
+                    //通过面积筛选
+                    double area = height * width;
+                    if (area > 5000)
                     {
-                        if (Vvalue1[t1] > Vvalue1[maxv1])
+                        dstRect[0] = Point2f(0, 0);
+                        dstRect[1] = Point2f(width, 0);
+                        dstRect[2] = Point2f(width, height);
+                        dstRect[3] = Point2f(0, height);
+                        // 应用透视变换，矫正成规则矩形
+                        Mat transform = getPerspectiveTransform(srcRect, dstRect);
+                        Mat perspectMat;
+                        warpPerspective(binBrightImg, perspectMat, transform, binBrightImg.size());
+                        // 提取扇叶图片
+                        Mat testim;
+                        testim = perspectMat(Rect(0, 0, width, height));
+
+                        cv::Point matchLoc;
+                        double value;
+                        Mat tmp1;
+                        resize(testim, tmp1, Size(42, 20));
+
+                        vector<double> Vvalue1;
+                        vector<double> Vvalue2;
+                        for (int j = 1; j <= 6; j++)
                         {
-                            maxv1 = t1;
+                            value = TemplateMatch(tmp1, templ[j], matchLoc, TM_CCOEFF_NORMED);
+                            Vvalue1.push_back(value);
                         }
-                    }
-                    for (int t2 = 0; t2 < 2; t2++)
-                    {
-                        if (Vvalue2[t2] > Vvalue2[maxv2])
+                        for (int j = 7; j <= 8; j++)
                         {
-                            maxv2 = t2;
+                            value = TemplateMatch(tmp1, templ[j], matchLoc, TM_CCOEFF_NORMED);
+                            Vvalue2.push_back(value);
                         }
-                    }
+                        int maxv1 = 0, maxv2 = 0;
 
-
-                    //预测是否是要打击的扇叶
-                    if (Vvalue1[maxv1] > Vvalue2[maxv2] && Vvalue1[maxv1] > 0.6)
-                    {
-                        findTarget = true;
-                        //查找装甲板
-                        if (hierarchy[i][2] >= 0)
+                        for (int t1 = 0; t1 < 6; t1++)
                         {
-                            RotatedRect rect_tmp = minAreaRect(contours[hierarchy[i][2]]);
-                            Point2f Pnt[4];
-                            rect_tmp.points(Pnt);
-
-
-                            float width = rect_tmp.size.width;
-                            float height = rect_tmp.size.height;
-                            if (height > width)
-                                swap(height, width);
-                            float area = width * height;
-
-                            if (height / width > maxHWRatio || area > maxArea || area < minArea)
+                            if (Vvalue1[t1] > Vvalue1[maxv1])
                             {
-                                continue;
+                                maxv1 = t1;
                             }
-                            Point centerP = rect_tmp.center;
-                            circle(_roiImg, centerP, 1, Scalar(0, 0, 255));
-                            if (cirV.size() < 30)
+                        }
+                        for (int t2 = 0; t2 < 2; t2++)
+                        {
+                            if (Vvalue2[t2] > Vvalue2[maxv2])
                             {
-                                cirV.push_back(centerP);
+                                maxv2 = t2;
                             }
-                            else
+                        }
+
+
+                        //预测是否是要打击的扇叶
+                        if (Vvalue1[maxv1] > Vvalue2[maxv2] && Vvalue1[maxv1] > 0.6)
+                        {
+                            findTarget = true;
+                            //查找装甲板
+                            if (hierarchy[i][2] >= 0)
                             {
-                                float R;
-                                //得到拟合的圆心
-                                CircleInfo2(cirV, cc, R);
-                                cirV.erase(cirV.begin());
-                                if (cc.x != 0 && cc.y != 0)
+                                RotatedRect rect_tmp = minAreaRect(contours[hierarchy[i][2]]);
+                                Point2f Pnt[4];
+                                rect_tmp.points(Pnt);
+
+
+                                float width = rect_tmp.size.width;
+                                float height = rect_tmp.size.height;
+                                if (height > width)
+                                    swap(height, width);
+                                float area = width * height;
+
+                                if (height / width > maxHWRatio || area > maxArea || area < minArea)
                                 {
-                                    Mat rot_mat = getRotationMatrix2D(cc, 30, 1);
+                                    continue;
+                                }
+                                Point centerP = rect_tmp.center;
+                                circle(_roiImg, centerP, 1, Scalar(0, 0, 255));
+                                if (cirV.size() < 30)
+                                {
+                                    cirV.push_back(centerP);
+                                }
+                                else
+                                {
+                                    float R;
+                                    //得到拟合的圆心
+                                    CircleInfo2(cirV, cc, R);
+                                    cirV.erase(cirV.begin());
+                                    if (cc.x != 0 && cc.y != 0)
+                                    {
+                                        Mat rot_mat = getRotationMatrix2D(cc, 30, 1);
 
-                                    float sinA = rot_mat.at<double>(0, 1); //sin(60);
-                                    float cosA = rot_mat.at<double>(0, 0); //cos(60);
-                                    float xx = -(cc.x - centerP.x);
-                                    float yy = -(cc.y - centerP.y);
-                                    Point2f resPoint = Point2f(cc.x + cosA * xx - sinA * yy,
-                                                               cc.y + sinA * xx + cosA * yy);
-                                    circle(_roiImg, resPoint, 1, Scalar(0, 255, 0), 5);
+                                        float sinA = rot_mat.at<double>(0, 1); //sin(60);
+                                        float cosA = rot_mat.at<double>(0, 0); //cos(60);
+                                        float xx = -(cc.x - centerP.x);
+                                        float yy = -(cc.y - centerP.y);
+                                        Point2f resPoint = Point2f(cc.x + cosA * xx - sinA * yy,
+                                                                   cc.y + sinA * xx + cosA * yy);
+                                        circle(_roiImg, resPoint, 1, Scalar(0, 255, 0), 5);
+                                        return resPoint;
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+            imshow("result", _roiImg);
+            waitKey(1);
         }
-        imshow("result", _roiImg);
     }
-}
+
 
 
 

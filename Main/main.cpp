@@ -1,5 +1,6 @@
 //#define DEBUG_PRETREATMENT
 #include "Armor/ArmorDetector.h"
+#include "WindMill/WindMill.h"
 using namespace rm;
 
 #include <opencv2/opencv.hpp>
@@ -43,4 +44,12 @@ int main()
        destroyAllWindows();
        return 0;
 }
+//int main()
+//{
+//    WindMill wind;
+//    Point2f res =  wind.detect();
+//    cout << res;
+//    return 0;
+//}
+
 

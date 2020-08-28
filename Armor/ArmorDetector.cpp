@@ -233,9 +233,8 @@ int ArmorDetector::detect()
         {
             _grayImg=channels.at(BLUE)-channels.at(RED);//Get blue-red image;
         }
-        imshow("123", _grayImg);
         Mat binBrightImg; //二值图
-        //cvtColor(_roiImg, _grayImg, COLOR_BGR2GRAY, 1);
+        cvtColor(_roiImg, _grayImg, COLOR_BGR2GRAY, 1);
         threshold(_grayImg, binBrightImg, _param.brightness_threshold, 255, THRESH_BINARY);
 
         Mat kernel = getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3, 3));
@@ -406,7 +405,7 @@ int ArmorDetector::detect()
             }
             armorVertexs.emplace_back(intVertex);
         }
-        cvex::showContours(_debugWindowName, _debugImg, _debugImg,armorVertexs,  cvex::WHITE, 1, _roi.tl());
+        cvex::showContours(_debugWindowName, _debugImg, _debugImg,armorVertexs,  cvex::GREEN, 1, _roi.tl());
 #endif //  DEBUG_DETECTION
 
         //没匹配到装甲板则返回没找到

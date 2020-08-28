@@ -38,7 +38,7 @@ public:
     {
         _enemy_color = 2;
     }
-    void detect();
+    Point2f detect();
 
 
 };
